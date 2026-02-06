@@ -3,18 +3,23 @@ let taskIdCounter = 0;
 let taskHistory = [];
 let jiraTasks = {};
 let totalPoints = 0;
+let darkMode = false;
 
 chrome.storage.local.get(
-  ["tasks", "taskIdCounter", "taskHistory", "jiraTasks", "totalPoints"],
+  ["tasks", "taskIdCounter", "taskHistory", "jiraTasks", "totalPoints", "darkMode"],
   (result) => {
+    darkMode = result.darkMode || false;
     if (result.tasks) {
       tasks.push(...result.tasks.filter((t) => !t.deleted));
       taskIdCounter = result.taskIdCounter || 0;
       taskHistory = result.taskHistory || [];
       jiraTasks = result.jiraTasks || {};
       totalPoints = result.totalPoints || 0;
+      applyTheme();
       renderTasks();
       updatePointsDisplay();
+    } else {
+      applyTheme();
     }
   },
 );
@@ -36,6 +41,7 @@ function saveTasks() {
     taskHistory,
     jiraTasks,
     totalPoints,
+    darkMode,
   });
 }
 
@@ -140,6 +146,8 @@ toolbar.innerHTML = `
         ${isJiraPage ? '<div class="dropdown-item" data-action="add-jira">+ Add Jira Ticket</div>' : ""}
         <div class="dropdown-item" data-action="add-task">+ Add Task</div>
         <div class="dropdown-item" data-action="download-report">📊 Report</div>
+        <div class="dropdown-item" data-action="toggle-dark-mode">🌙 Dark Mode</div>
+        <div class="dropdown-item" data-action="clear-storage">🗑️ Clear Storage</div>
       </div>
     </div>
   </div>
@@ -209,6 +217,24 @@ addDropdownMenu.addEventListener("click", (e) => {
     if (title) addTask(title);
   } else if (item.dataset.action === "download-report") {
     downloadReport();
+  } else if (item.dataset.action === "toggle-dark-mode") {
+    darkMode = !darkMode;
+    applyTheme();
+    saveTasks();
+  } else if (item.dataset.action === "clear-storage") {
+    if (confirm("Clear all tasks and history? This cannot be undone.")) {
+      chrome.storage.local.clear(() => {
+        tasks.length = 0;
+        taskHistory = [];
+        jiraTasks = {};
+        totalPoints = 0;
+        taskIdCounter = 0;
+        darkMode = false;
+        applyTheme();
+        renderTasks();
+        updatePointsDisplay();
+      });
+    }
   } else if (item.dataset.action === "add-jira") {
     const jiraInfo = getJiraTicketInfo();
     if (!jiraInfo) return;
@@ -408,6 +434,26 @@ function downloadReport() {
 function updateTaskTime(task) {
   const el = document.getElementById(`task-${task.id}`);
   if (el) el.querySelector(".time").textContent = formatTime(task.time);
+}
+
+function applyTheme() {
+  const toolbar = document.getElementById("custom-toolbar");
+  const menu = document.getElementById("add-dropdown-menu");
+  if (darkMode) {
+    toolbar.style.background = "linear-gradient(135deg, #1a1a2e 0%, #16213e 100%)";
+    if (menu) {
+      menu.style.background = "#2c2c3e";
+      menu.style.borderColor = "#444";
+    }
+    document.body.classList.add("dark-mode");
+  } else {
+    toolbar.style.background = "linear-gradient(135deg, #667eea 0%, #764ba2 100%)";
+    if (menu) {
+      menu.style.background = "white";
+      menu.style.borderColor = "#ccc";
+    }
+    document.body.classList.remove("dark-mode");
+  }
 }
 
 function renderTasks() {
