@@ -1,0 +1,13 @@
+{
+  "manifest_version": 3,
+  "name": "Toolbar Extension",
+  "version": "1.0",
+  "description": "Displays a toolbar under the bookmark bar",
+  "permissions": ["activeTab", "storage"],
+  "content_scripts": [{
+    "matches": ["<all_urls>"],
+    "js": ["content.js"],
+    "css": ["toolbar.css"],
+    "run_at": "document_end"
+  }]
+}
